@@ -268,11 +268,6 @@ ipcMain.handle("select-directory", async () => {
 ipcMain.handle(
   "api-call",
   async (event, { method, endpoint, data, rawResponse }) => {
-    // 检查后端是否就绪
-    if (!backendPort) {
-      throw new Error("Java后端未启动，请稍后重试");
-    }
-
     try {
       const url = `http://localhost:${backendPort}${endpoint}`;
 
@@ -280,22 +275,18 @@ ipcMain.handle(
       if (method === "GET") {
         response = await axios.get(url, {
           responseType: rawResponse ? "text" : "json",
-          timeout: 30000,
         });
       } else if (method === "POST") {
-        response = await axios.post(url, data, { timeout: 30000 });
+        response = await axios.post(url, data);
       } else if (method === "DELETE") {
-        response = await axios.delete(url, { timeout: 30000 });
+        response = await axios.delete(url);
       } else if (method === "PUT") {
-        response = await axios.put(url, data, { timeout: 30000 });
+        response = await axios.put(url, data);
       }
 
       return response.data;
     } catch (error) {
       console.error("API call failed:", error);
-      if (error.code === "ECONNREFUSED") {
-        throw new Error("无法连接到后端服务，请检查Java是否已安装并正确配置");
-      }
       throw error;
     }
   },
