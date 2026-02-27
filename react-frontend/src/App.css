@@ -1,0 +1,160 @@
+.App {
+  min-height: 100vh;
+  background: #f0f2f5;
+}
+
+.home-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  color: #262626;
+  margin-bottom: 8px;
+}
+
+.page-header p {
+  font-size: 16px;
+  color: #8c8c8c;
+}
+
+.steps-card {
+  margin-bottom: 24px;
+}
+
+.action-card {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-content {
+  text-align: center;
+}
+
+.action-icon {
+  font-size: 64px;
+  color: #4CAF50;
+  margin-bottom: 24px;
+}
+
+.action-content h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.action-content p {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-bottom: 24px;
+}
+
+.directory-selection {
+  display: grid;
+  gap: 16px;
+}
+
+.info-card {
+  margin-bottom: 16px;
+}
+
+.tree-card {
+  min-height: 400px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.analysis-page {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.progress-card {
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-content {
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+.progress-content .anticon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.progress-content h2 {
+  margin-bottom: 32px;
+}
+
+.stage-info {
+  margin-top: 24px;
+  text-align: left;
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.stage-info p {
+  margin-bottom: 8px;
+}
+
+.report-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.report-header {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.report-header h1 {
+  margin: 0;
+}
+
+.header-info {
+  flex: 1;
+  margin-left: 24px;
+}
+
+.header-info p {
+  margin: 0;
+  color: #8c8c8c;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.loading-container p {
+  margin-top: 16px;
+}

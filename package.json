@@ -1,0 +1,47 @@
+{
+  "name": "java-coverage-tool",
+  "version": "1.0.0",
+  "description": "Java单元测试覆盖检测GUI工具 - 提供可视化界面分析Java项目的单元测试覆盖情况",
+  "main": "electron-app/main.js",
+  "scripts": {
+    "start": "npm run start:backend && npm run start:electron",
+    "start:backend": "cd java-backend && mvn clean compile exec:java",
+    "start:electron": "cd electron-app && npm start",
+    "start:react": "cd react-frontend && npm start",
+    "build": "npm run build:backend && npm run build:frontend && npm run build:electron",
+    "build:backend": "cd java-backend && mvn clean package",
+    "build:frontend": "cd react-frontend && npm run build",
+    "build:electron": "cd electron-app && npm run build",
+    "package": "npm run build && electron-builder",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd java-backend && mvn test",
+    "test:frontend": "cd react-frontend && npm test"
+  },
+  "keywords": [
+    "java",
+    "unit-test",
+    "coverage",
+    "test-coverage",
+    "git",
+    "electron",
+    "react"
+  ],
+  "author": "Coverage Tool Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^23.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/java-coverage-tool.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/java-coverage-tool/issues"
+  },
+  "homepage": "https://github.com/your-org/java-coverage-tool#readme"
+}

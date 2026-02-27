@@ -1,0 +1,94 @@
+.home-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  color: #262626;
+  margin-bottom: 8px;
+}
+
+.page-header p {
+  font-size: 16px;
+  color: #8c8c8c;
+}
+
+.steps-card {
+  margin-bottom: 24px;
+}
+
+.action-card {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-content {
+  text-align: center;
+}
+
+.action-icon {
+  font-size: 64px;
+  color: #4CAF50;
+  margin-bottom: 24px;
+}
+
+.action-content h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.action-content p {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-bottom: 24px;
+}
+
+.directory-selection {
+  display: grid;
+  gap: 16px;
+}
+
+.info-card {
+  margin-bottom: 16px;
+}
+
+.directory-row {
+  margin-top: 16px;
+}
+
+.tree-card {
+  min-height: 400px;
+}
+
+.tree-card .ant-card-head {
+  background: #fafafa;
+}
+
+.source-card .ant-card-head {
+  border-left: 4px solid #4CAF50;
+}
+
+.test-card .ant-card-head {
+  border-left: 4px solid #1890ff;
+}
+
+.selected-count {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 24px;
+}

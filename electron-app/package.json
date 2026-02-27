@@ -1,0 +1,81 @@
+{
+  "name": "java-coverage-electron",
+  "version": "1.0.0",
+  "description": "Java Coverage Tool Electron App",
+  "author": "Java Coverage Tool Team",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:dev": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^23.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.3.0"
+  },
+  "build": {
+    "appId": "com.coveragetool.app",
+    "productName": "Java Coverage Tool",
+    "directories": {
+      "output": "../build/electron-app"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!node_modules/.bin"
+    ],
+    "extraResources": [
+      {
+        "from": "../build/java-backend.jar",
+        "to": "java-backend.jar"
+      },
+      {
+        "from": "../react-frontend/build",
+        "to": "app/react-frontend/build"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  }
+}

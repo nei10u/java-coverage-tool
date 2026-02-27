@@ -1,0 +1,97 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+build/
+dist/
+out/
+target/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.ctxt
+.mtj.tmp/
+hs_err_pid*
+replay_pid*
+
+# Maven
+java-backend/target/
+java-backend/.mvn/
+java-backend/mvnw
+java-backend/mvnw.cmd
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# React
+react-frontend/build/
+react-frontend/.env.local
+react-frontend/.env.development.local
+react-frontend/.env.test.local
+react-frontend/.env.production.local
+react-frontend/npm-debug.log*
+react-frontend/yarn-debug.log*
+react-frontend/yarn-error.log*
+
+# Electron
+electron-app/node_modules/
+electron-app/dist/
+electron-app/out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Coverage
+coverage/
+*.lcov
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Package files
+*.dmg
+*.exe
+*.zip
+*.tar.gz
+*.rar
