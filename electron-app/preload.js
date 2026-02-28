@@ -201,6 +201,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
       rawResponse: true,
     });
   },
+
+  /**
+   * 打开本地文件
+   *
+   * 使用系统默认程序打开文件（如HTML报告）。
+   * @param {string} filePath - 文件路径
+   * @returns {Promise<void>}
+   */
+  openFile: (filePath) => ipcRenderer.invoke("open-file", filePath),
 });
 
 /**

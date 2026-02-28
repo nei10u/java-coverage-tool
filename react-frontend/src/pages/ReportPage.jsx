@@ -1624,16 +1624,32 @@ function ReportPage() {
             width: 150,
             render: (_, record) => (
               <Space>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => {
-                    navigate(`/report/${record.reportId}`);
-                    setHistoryModalVisible(false);
-                  }}
-                >
-                  查看
-                </Button>
+                {record.savedPath ? (
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={async () => {
+                      try {
+                        await window.electronAPI.openFile(record.savedPath);
+                      } catch (error) {
+                        message.error("打开文件失败：" + error.message);
+                      }
+                    }}
+                  >
+                    查看
+                  </Button>
+                ) : (
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => {
+                      navigate(`/report/${record.reportId}`);
+                      setHistoryModalVisible(false);
+                    }}
+                  >
+                    查看
+                  </Button>
+                )}
                 <Popconfirm
                   title="确定删除此报告？"
                   onConfirm={() => handleDeleteReport(record.reportId)}

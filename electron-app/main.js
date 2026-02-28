@@ -8,7 +8,7 @@
  * 4. 管理应用生命周期
  */
 
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const fs = require("fs");
@@ -22,6 +22,9 @@ let javaBackend = null;
 
 // Java后端端口号
 let backendPort = 4567;
+
+// 后端是否就绪
+let isBackendReady = false;
 
 /**
  * 创建主窗口
@@ -151,6 +154,7 @@ function startJavaBackend() {
           if (portMatch) {
             backendPort = parseInt(portMatch[1]);
           }
+          isBackendReady = true;
           resolve(backendPort);
         }
       });
@@ -187,6 +191,7 @@ function stopJavaBackend() {
     javaBackend.kill();
     javaBackend = null;
   }
+  isBackendReady = false;
 }
 
 /**
@@ -269,7 +274,7 @@ ipcMain.handle(
   "api-call",
   async (event, { method, endpoint, data, rawResponse }) => {
     // 检查后端是否就绪
-    if (!backendPort) {
+    if (!isBackendReady) {
       throw new Error("Java后端未启动，请稍后重试");
     }
 
@@ -300,3 +305,16 @@ ipcMain.handle(
     }
   },
 );
+
+/**
+ * IPC处理：打开本地文件
+ *
+ * 使用系统默认程序打开文件（如HTML报告）。
+ */
+ipcMain.handle("open-file", async (event, filePath) => {
+  if (!filePath || !fs.existsSync(filePath)) {
+    throw new Error("文件不存在: " + filePath);
+  }
+  await shell.openPath(filePath);
+  return true;
+});
