@@ -372,8 +372,19 @@ function ReportPage() {
   const renderMethodStatistics = () => {
     const allMethods = coverageReport.allMethodsList || [];
 
+    // 去重：根据完整签名+行号去重（避免重复统计）
+    const uniqueMethods = [];
+    const seenSignatures = new Set();
+    allMethods.forEach((method) => {
+      const key = `${method.className}-${method.signature}-${method.startLineNumber}`;
+      if (!seenSignatures.has(key)) {
+        seenSignatures.add(key);
+        uniqueMethods.push(method);
+      }
+    });
+
     // 按复杂度倒序排列
-    const sortedAllMethods = [...allMethods].sort((a, b) => {
+    const sortedAllMethods = [...uniqueMethods].sort((a, b) => {
       const complexityA = a.complexity || 0;
       const complexityB = b.complexity || 0;
       return complexityB - complexityA;
@@ -397,9 +408,31 @@ function ReportPage() {
         key: "fullSignature",
         width: 350,
         ellipsis: true,
-        render: (text) => (
-          <Tooltip title={text}>
-            <span style={{ fontFamily: "monospace" }}>{text}</span>
+        render: (text, record) => (
+          <Tooltip title={`${text} (点击查看代码)`}>
+            <button
+              type="button"
+              onClick={() =>
+                handleViewFile(
+                  record.filePath,
+                  record.startLineNumber,
+                  record.endLineNumber,
+                )
+              }
+              style={{
+                color: "#1890ff",
+                cursor: "pointer",
+                background: "none",
+                border: "none",
+                padding: 0,
+                font: "inherit",
+                textDecoration: "underline",
+                display: "inline",
+                fontFamily: "monospace",
+              }}
+            >
+              {text}
+            </button>
           </Tooltip>
         ),
       },
@@ -516,8 +549,19 @@ function ReportPage() {
   const renderUncoveredMethods = () => {
     const uncoveredList = coverageReport.uncoveredMethodList || [];
 
+    // 去重：根据完整签名+行号去重
+    const uniqueUncovered = [];
+    const seenSignatures = new Set();
+    uncoveredList.forEach((method) => {
+      const key = `${method.className}-${method.signature}-${method.startLineNumber}`;
+      if (!seenSignatures.has(key)) {
+        seenSignatures.add(key);
+        uniqueUncovered.push(method);
+      }
+    });
+
     // 按复杂度倒序排列（复杂度高的在前）
-    const sortedUncoveredList = [...uncoveredList].sort((a, b) => {
+    const sortedUncoveredList = [...uniqueUncovered].sort((a, b) => {
       const complexityA = a.complexity || 0;
       const complexityB = b.complexity || 0;
       return complexityB - complexityA;
@@ -541,9 +585,31 @@ function ReportPage() {
         key: "fullSignature",
         width: 400,
         ellipsis: true,
-        render: (text) => (
-          <Tooltip title={text}>
-            <span style={{ fontFamily: "monospace" }}>{text}</span>
+        render: (text, record) => (
+          <Tooltip title={`${text} (点击查看代码)`}>
+            <button
+              type="button"
+              onClick={() =>
+                handleViewFile(
+                  record.filePath,
+                  record.startLineNumber,
+                  record.endLineNumber,
+                )
+              }
+              style={{
+                color: "#1890ff",
+                cursor: "pointer",
+                background: "none",
+                border: "none",
+                padding: 0,
+                font: "inherit",
+                textDecoration: "underline",
+                display: "inline",
+                fontFamily: "monospace",
+              }}
+            >
+              {text}
+            </button>
           </Tooltip>
         ),
       },
@@ -1280,7 +1346,7 @@ function ReportPage() {
       ],
     };
 
-    // 图表3: 开发者贡献统计（按作者分组）
+    // 图表3: 开发者贡献统计（按历史提交分组）
     const developerContrib = {};
     sortedCommits.forEach((commit) => {
       const author = commit.authorName;
@@ -1300,9 +1366,9 @@ function ReportPage() {
 
     const developerOption = {
       title: {
-        text: "开发者贡献统计",
+        text: "开发者贡献统计（历史提交）",
         left: "center",
-        textStyle: { fontSize: 16, fontWeight: "bold" },
+        textStyle: { fontSize: 14, fontWeight: "bold" },
       },
       tooltip: {
         trigger: "item",
@@ -1323,28 +1389,30 @@ function ReportPage() {
       legend: {
         orient: "vertical",
         left: "left",
-        top: 60,
+        top: 50,
+        type: "scroll",
       },
       series: [
         {
           name: "代码贡献",
           type: "pie",
-          radius: ["40%", "70%"],
+          radius: ["35%", "60%"],
           center: ["60%", "55%"],
           avoidLabelOverlap: false,
           itemStyle: {
-            borderRadius: 10,
+            borderRadius: 6,
             borderColor: "#fff",
             borderWidth: 2,
           },
           label: {
             show: true,
             formatter: "{b}: {d}%",
+            fontSize: 10,
           },
           emphasis: {
             label: {
               show: true,
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: "bold",
             },
           },
@@ -1459,7 +1527,7 @@ function ReportPage() {
               />
             </Card>
           </Col>
-          <Col span={12}>
+          <Col span={24}>
             <Card>
               <ReactECharts
                 option={coverageOption}
@@ -1468,11 +1536,21 @@ function ReportPage() {
               />
             </Card>
           </Col>
-          <Col span={12}>
+          <Col span={24}>
             <Card>
               <ReactECharts
                 option={developerOption}
-                style={{ height: 300 }}
+                style={{ height: 280 }}
+                opts={{ renderer: "svg" }}
+              />
+            </Card>
+          </Col>
+
+          <Col span={24}>
+            <Card>
+              <ReactECharts
+                option={developerOption}
+                style={{ height: 280 }}
                 opts={{ renderer: "svg" }}
               />
             </Card>
@@ -1507,20 +1585,21 @@ function ReportPage() {
         title: "开发者",
         dataIndex: "developerName",
         key: "developerName",
-        width: 150,
+        width: 130,
+        ellipsis: true,
       },
       {
         title: "提交次数",
         dataIndex: "totalCommits",
         key: "totalCommits",
-        width: 100,
+        width: 90,
         sorter: (a, b) => a.totalCommits - b.totalCommits,
       },
       {
         title: "新增行数",
         dataIndex: "totalLinesAdded",
         key: "totalLinesAdded",
-        width: 100,
+        width: 90,
         sorter: (a, b) => a.totalLinesAdded - b.totalLinesAdded,
         render: (val) => <span style={{ color: "#3f8600" }}>+{val}</span>,
       },
@@ -1528,15 +1607,46 @@ function ReportPage() {
         title: "删除行数",
         dataIndex: "totalLinesDeleted",
         key: "totalLinesDeleted",
-        width: 100,
+        width: 90,
         sorter: (a, b) => a.totalLinesDeleted - b.totalLinesDeleted,
         render: (val) => <span style={{ color: "#cf1322" }}>-{val}</span>,
+      },
+      {
+        title: "当前有效代码",
+        dataIndex: "currentLinesOwned",
+        key: "currentLinesOwned",
+        width: 110,
+        sorter: (a, b) =>
+          (a.currentLinesOwned || 0) - (b.currentLinesOwned || 0),
+        render: (val) => (
+          <Tag color={val > 1000 ? "green" : val > 500 ? "blue" : "default"}>
+            {val || 0} 行
+          </Tag>
+        ),
+      },
+      {
+        title: "贡献占比",
+        dataIndex: "contributionPercentage",
+        key: "contributionPercentage",
+        width: 130,
+        sorter: (a, b) =>
+          (a.contributionPercentage || 0) - (b.contributionPercentage || 0),
+        render: (val) =>
+          val ? (
+            <Progress
+              percent={val}
+              size="small"
+              format={(percent) => `${percent.toFixed(1)}%`}
+            />
+          ) : (
+            "-"
+          ),
       },
       {
         title: "平均覆盖率",
         dataIndex: "averageCoverageRate",
         key: "averageCoverageRate",
-        width: 150,
+        width: 130,
         sorter: (a, b) =>
           (a.averageCoverageRate || 0) - (b.averageCoverageRate || 0),
         render: (val) =>
@@ -1562,6 +1672,7 @@ function ReportPage() {
         rowKey="developerEmail"
         pagination={{ pageSize: 15, showSizeChanger: true }}
         size="small"
+        scroll={{ x: 900 }}
       />
     );
   };

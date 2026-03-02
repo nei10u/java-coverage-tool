@@ -7,6 +7,8 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.blame.BlameGenerator;
+import org.eclipse.jgit.blame.BlameResult;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
@@ -327,6 +329,7 @@ public class GitAnalyzer {
                 s.setTotalLinesAdded(0);
                 s.setTotalLinesModified(0);
                 s.setTotalLinesDeleted(0);
+                s.setCurrentLinesOwned(0);
                 return s;
             });
             
@@ -340,6 +343,182 @@ public class GitAnalyzer {
         }
         
         return statsMap;
+    }
+    
+    /**
+     * 统计当前有效代码行数（通过git blame）
+     * 
+     * 分析当前代码库中每个文件，统计每行代码的最后修改者，
+     * 从而得到每个开发者在当前代码库中的有效代码贡献。
+     * 
+     * @param projectPath 项目路径
+     * @param sourceDirectories 源码目录列表
+     * @param statsMap 开发者统计信息映射（会被更新）
+     */
+    public void calculateCurrentLinesOwned(String projectPath, List<String> sourceDirectories, 
+                                            Map<String, DeveloperStats> statsMap) {
+        // 用于存储每个邮箱对应的开发者统计
+        Map<String, Integer> linesByAuthor = new HashMap<>();
+        int totalLines = 0;
+        
+        try {
+            // 确保仓库已初始化
+            if (repository == null) {
+                initialize(projectPath);
+            }
+            
+            // 遍历所有源码目录
+            for (String sourceDir : sourceDirectories) {
+                File dir = new File(projectPath, sourceDir);
+                if (!dir.exists()) {
+                    // 尝试绝对路径
+                    dir = new File(sourceDir);
+                }
+                
+                if (dir.exists() && dir.isDirectory()) {
+                    // 递归处理所有Java文件
+                    totalLines += processDirectoryForBlame(dir, "", linesByAuthor);
+                }
+            }
+            
+            // 更新开发者统计信息
+            for (Map.Entry<String, DeveloperStats> entry : statsMap.entrySet()) {
+                String email = entry.getKey();
+                DeveloperStats stats = entry.getValue();
+                
+                // 统计当前有效代码行数
+                int ownedLines = 0;
+                for (Map.Entry<String, Integer> authorEntry : linesByAuthor.entrySet()) {
+                    // 邮箱可能不完全匹配，尝试模糊匹配
+                    if (authorEntry.getKey().equalsIgnoreCase(email) ||
+                        authorEntry.getKey().contains(email) ||
+                        email.contains(authorEntry.getKey())) {
+                        ownedLines += authorEntry.getValue();
+                    }
+                }
+                stats.setCurrentLinesOwned(ownedLines);
+                
+                // 计算贡献占比
+                if (totalLines > 0) {
+                    stats.setContributionPercentage((ownedLines * 100.0) / totalLines);
+                }
+            }
+            
+            // 对于没有提交记录但有代码贡献的开发者，添加到统计中
+            for (Map.Entry<String, Integer> authorEntry : linesByAuthor.entrySet()) {
+                String authorEmail = authorEntry.getKey();
+                boolean found = false;
+                
+                for (String existingEmail : statsMap.keySet()) {
+                    if (existingEmail.equalsIgnoreCase(authorEmail) ||
+                        existingEmail.contains(authorEmail) ||
+                        authorEmail.contains(existingEmail)) {
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found && authorEntry.getValue() > 0) {
+                    DeveloperStats newStats = new DeveloperStats();
+                    newStats.setDeveloperEmail(authorEmail);
+                    newStats.setDeveloperName(extractNameFromEmail(authorEmail));
+                    newStats.setCurrentLinesOwned(authorEntry.getValue());
+                    if (totalLines > 0) {
+                        newStats.setContributionPercentage((authorEntry.getValue() * 100.0) / totalLines);
+                    }
+                    statsMap.put(authorEmail, newStats);
+                }
+            }
+            
+        } catch (Exception e) {
+            System.err.println("统计当前有效代码行数失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 递归处理目录，对每个Java文件执行blame分析
+     */
+    private int processDirectoryForBlame(File dir, String relativePath, Map<String, Integer> linesByAuthor) {
+        int totalLines = 0;
+        
+        File[] files = dir.listFiles();
+        if (files == null) return 0;
+        
+        for (File file : files) {
+            String newRelativePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
+            
+            if (file.isDirectory()) {
+                // 递归处理子目录
+                totalLines += processDirectoryForBlame(file, newRelativePath, linesByAuthor);
+            } else if (file.getName().endsWith(".java")) {
+                // 处理Java文件
+                totalLines += blameFile(newRelativePath, linesByAuthor);
+            }
+        }
+        
+        return totalLines;
+    }
+    
+    /**
+     * 对单个文件执行blame分析
+     */
+    private int blameFile(String filePath, Map<String, Integer> linesByAuthor) {
+        try {
+            BlameGenerator blameGenerator = new BlameGenerator(repository, filePath);
+            BlameResult blameResult = blameGenerator.computeBlameResult();
+            
+            if (blameResult == null) {
+                return 0;
+            }
+            
+            int lineCount = 0;
+            int lastIdx = blameResult.getResultContents() != null ? 
+                          blameResult.getResultContents().size() : 0;
+            
+            for (int i = 0; i < lastIdx; i++) {
+                try {
+                    RevCommit commit = blameResult.getSourceCommit(i);
+                    if (commit != null) {
+                        String authorEmail = commit.getAuthorIdent().getEmailAddress();
+                        linesByAuthor.merge(authorEmail, 1, Integer::sum);
+                        lineCount++;
+                    }
+                } catch (Exception e) {
+                    // 忽略单行解析错误
+                }
+            }
+            
+            blameGenerator.close();
+            return lineCount;
+            
+        } catch (Exception e) {
+            // 忽略单个文件的blame错误
+            return 0;
+        }
+    }
+    
+    /**
+     * 从邮箱提取名字（简化处理）
+     */
+    private String extractNameFromEmail(String email) {
+        if (email == null || email.isEmpty()) return "Unknown";
+        int atIndex = email.indexOf('@');
+        if (atIndex > 0) {
+            String name = email.substring(0, atIndex);
+            // 将点号或下划线转换为空格，并首字母大写
+            name = name.replace(".", " ").replace("_", " ");
+            StringBuilder result = new StringBuilder();
+            for (String part : name.split(" ")) {
+                if (!part.isEmpty()) {
+                    result.append(Character.toUpperCase(part.charAt(0)))
+                          .append(part.substring(1).toLowerCase())
+                          .append(" ");
+                }
+            }
+            return result.toString().trim();
+        }
+        return email;
     }
     
     /**

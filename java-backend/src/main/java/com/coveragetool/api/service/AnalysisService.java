@@ -234,6 +234,13 @@ public class AnalysisService {
             // 获取开发者统计
             Map<String, DeveloperStats> developerStats = 
                 gitAnalyzer.getDeveloperStatistics(commits);
+            
+            // 统计当前有效代码行数（基于git blame）
+            gitAnalyzer.calculateCurrentLinesOwned(
+                request.getProjectPath(), 
+                request.getSourceDirectories(), 
+                developerStats);
+            
             gitStatistics.setDeveloperStats(developerStats);
             gitStatistics.setTotalDevelopers(developerStats.size());
             

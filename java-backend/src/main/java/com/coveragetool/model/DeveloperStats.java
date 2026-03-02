@@ -41,6 +41,17 @@ public class DeveloperStats {
     private int totalLinesDeleted;
     
     /**
+     * 当前有效代码行数
+     * 通过git blame统计的当前代码库中归属于该开发者的代码行数
+     */
+    private int currentLinesOwned;
+    
+    /**
+     * 代码贡献占比（基于当前有效代码行数）
+     */
+    private double contributionPercentage;
+    
+    /**
      * 平均测试覆盖率
      * 所有提交的平均测试覆盖百分比
      */
@@ -140,5 +151,21 @@ public class DeveloperStats {
 
     public void setScore(double score) {
         this.score = score;
+    }
+    
+    public int getCurrentLinesOwned() {
+        return currentLinesOwned;
+    }
+    
+    public void setCurrentLinesOwned(int currentLinesOwned) {
+        this.currentLinesOwned = currentLinesOwned;
+    }
+    
+    public double getContributionPercentage() {
+        return contributionPercentage;
+    }
+    
+    public void setContributionPercentage(double contributionPercentage) {
+        this.contributionPercentage = contributionPercentage;
     }
 }

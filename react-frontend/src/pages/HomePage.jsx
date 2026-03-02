@@ -1,11 +1,11 @@
 /**
  * 首页组件
  *
- * 提供项目选择、目录配置和分析启动功能。
+ * 提供项目选择、目录配置、报告管理和分析启动功能。
  * 这是用户的主要交互界面。
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
@@ -17,12 +17,26 @@ import {
   Alert,
   Row,
   Col,
+  Table,
+  Input,
+  Tag,
+  Popconfirm,
+  Tooltip,
+  Statistic,
+  Progress,
+  Space,
 } from "antd";
 import {
   FolderOpenOutlined,
   PlayCircleOutlined,
   SearchOutlined,
   SettingOutlined,
+  ReloadOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  SaveOutlined,
+  HistoryOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import "./HomePage.css";
 
@@ -32,37 +46,122 @@ const { DirectoryTree } = Tree;
  * HomePage组件
  */
 function HomePage() {
-  // 路由导航钩子，用于跳转页面
   const navigate = useNavigate();
 
-  // 状态管理
-  const [currentStep, setCurrentStep] = useState(0); // 当前步骤
-  const [projectPath, setProjectPath] = useState(""); // 项目路径
-  const [projectStructure, setProjectStructure] = useState(null); // 项目结构
-  const [selectedSourceDirs, setSelectedSourceDirs] = useState([]); // 选中的源码目录
-  const [selectedTestDirs, setSelectedTestDirs] = useState([]); // 选中的测试目录
-  const [loading, setLoading] = useState(false); // 加载状态
-  const [sourceTreeData, setSourceTreeData] = useState([]); // 源码目录树
-  const [testTreeData, setTestTreeData] = useState([]); // 测试目录树
-  const [sourceCheckedKeys, setSourceCheckedKeys] = useState([]); // 源码选中的key
-  const [testCheckedKeys, setTestCheckedKeys] = useState([]); // 测试选中的key
+  // 项目分析相关状态
+  const [currentStep, setCurrentStep] = useState(0);
+  const [projectPath, setProjectPath] = useState("");
+  const [projectStructure, setProjectStructure] = useState(null);
+  const [selectedSourceDirs, setSelectedSourceDirs] = useState([]);
+  const [selectedTestDirs, setSelectedTestDirs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [sourceTreeData, setSourceTreeData] = useState([]);
+  const [testTreeData, setTestTreeData] = useState([]);
+  const [sourceCheckedKeys, setSourceCheckedKeys] = useState([]);
+  const [testCheckedKeys, setTestCheckedKeys] = useState([]);
 
-  /**
-   * 步骤1：选择项目目录
-   *
-   * 打开文件选择对话框，让用户选择Java项目根目录。
-   */
+  // 报告配置相关状态
+  const [reportSavePath, setReportSavePath] = useState("");
+  const [pathLoading, setPathLoading] = useState(false);
+  const [pathSaving, setPathSaving] = useState(false);
+
+  // 历史报告相关状态
+  const [reportHistory, setReportHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // 初始化：加载配置和历史
+  useEffect(() => {
+    loadReportConfig();
+    loadReportHistory();
+  }, []);
+
+  // 加载报告配置
+  const loadReportConfig = async () => {
+    setPathLoading(true);
+    try {
+      const response = await window.electronAPI.getDefaultSavePath();
+      setReportSavePath(response.path || "");
+    } catch (error) {
+      console.error("加载配置失败:", error);
+    } finally {
+      setPathLoading(false);
+    }
+  };
+
+  // 加载报告历史
+  const loadReportHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const history = await window.electronAPI.getReportHistory();
+      setReportHistory(history || []);
+    } catch (error) {
+      console.error("加载历史失败:", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // 选择报告保存目录
+  const handleSelectReportPath = async () => {
+    try {
+      const path = await window.electronAPI.selectDirectory();
+      if (path) {
+        setReportSavePath(path);
+      }
+    } catch (error) {
+      message.error("选择目录失败：" + error.message);
+    }
+  };
+
+  // 保存报告配置
+  const handleSaveReportConfig = async () => {
+    if (!reportSavePath) {
+      message.warning("请先选择报告保存目录");
+      return;
+    }
+    setPathSaving(true);
+    try {
+      await window.electronAPI.setDefaultSavePath(reportSavePath);
+      message.success("配置已保存");
+    } catch (error) {
+      message.error("保存配置失败：" + error.message);
+    } finally {
+      setPathSaving(false);
+    }
+  };
+
+  // 查看历史报告
+  const handleViewReport = async (record) => {
+    if (record.savedPath) {
+      try {
+        await window.electronAPI.openFile(record.savedPath);
+      } catch (error) {
+        message.error("打开报告失败：" + error.message);
+      }
+    } else {
+      message.warning("该报告未保存到本地");
+    }
+  };
+
+  // 删除历史报告
+  const handleDeleteReport = async (reportId) => {
+    try {
+      await window.electronAPI.deleteReport(reportId);
+      message.success("报告已删除");
+      loadReportHistory();
+    } catch (error) {
+      message.error("删除报告失败：" + error.message);
+    }
+  };
+
+  // 选择项目目录
   const handleSelectProject = async () => {
     try {
-      // 调用Electron API打开目录选择对话框
       const selectedPath = await window.electronAPI.selectDirectory();
-
       if (selectedPath) {
         setProjectPath(selectedPath);
         message.success(`已选择项目：${selectedPath}`);
-        setCurrentStep(1); // 进入下一步
-
-        // 自动扫描项目
+        setCurrentStep(1);
         await scanProject(selectedPath);
       }
     } catch (error) {
@@ -70,29 +169,20 @@ function HomePage() {
     }
   };
 
-  /**
-   * 扫描项目
-   *
-   * 调用后端API扫描项目结构，识别源码目录和测试目录。
-   */
+  // 扫描项目
   const scanProject = async (path) => {
     setLoading(true);
     try {
-      // 调用后端扫描API
       const structure = await window.electronAPI.scanProject(path);
       setProjectStructure(structure);
 
-      // 设置源码目录树
       if (structure.sourceTree) {
         setSourceTreeData([structure.sourceTree]);
       }
-
-      // 设置测试目录树
       if (structure.testTree) {
         setTestTreeData([structure.testTree]);
       }
 
-      // 默认选中标准目录
       if (
         structure.sourceDirectories &&
         structure.sourceDirectories.length > 0
@@ -106,7 +196,7 @@ function HomePage() {
       }
 
       message.success("项目扫描完成");
-      setCurrentStep(2); // 进入目录选择步骤
+      setCurrentStep(2);
     } catch (error) {
       message.error("扫描项目失败：" + error.message);
     } finally {
@@ -114,12 +204,9 @@ function HomePage() {
     }
   };
 
-  /**
-   * 处理源码目录选择
-   */
-  const handleSourceCheck = (checkedKeysValue, info) => {
+  // 处理源码目录选择
+  const handleSourceCheck = (checkedKeysValue) => {
     setSourceCheckedKeys(checkedKeysValue);
-    // 过滤出目录路径（排除文件）
     const dirs = checkedKeysValue.filter((key) => {
       const node = findNodeByKey(sourceTreeData, key);
       return node && node.type !== "file";
@@ -127,12 +214,9 @@ function HomePage() {
     setSelectedSourceDirs(dirs);
   };
 
-  /**
-   * 处理测试目录选择
-   */
-  const handleTestCheck = (checkedKeysValue, info) => {
+  // 处理测试目录选择
+  const handleTestCheck = (checkedKeysValue) => {
     setTestCheckedKeys(checkedKeysValue);
-    // 过滤出目录路径（排除文件）
     const dirs = checkedKeysValue.filter((key) => {
       const node = findNodeByKey(testTreeData, key);
       return node && node.type !== "file";
@@ -140,9 +224,7 @@ function HomePage() {
     setSelectedTestDirs(dirs);
   };
 
-  /**
-   * 根据key查找节点
-   */
+  // 根据key查找节点
   const findNodeByKey = (nodes, key) => {
     for (const node of nodes) {
       if (node.key === key) return node;
@@ -154,18 +236,12 @@ function HomePage() {
     return null;
   };
 
-  /**
-   * 步骤3：开始分析
-   *
-   * 提交分析请求，启动测试覆盖分析。
-   */
+  // 开始分析
   const handleStartAnalysis = async () => {
-    // 验证是否选择了目录
     if (selectedSourceDirs.length === 0) {
       message.warning("请至少选择一个源码目录");
       return;
     }
-
     if (selectedTestDirs.length === 0) {
       message.warning("请至少选择一个测试目录");
       return;
@@ -173,22 +249,15 @@ function HomePage() {
 
     setLoading(true);
     try {
-      // 构建分析请求
       const analysisRequest = {
         projectPath: projectPath,
         sourceDirectories: selectedSourceDirs,
         testDirectories: selectedTestDirs,
-        gitOptions: {
-          includeMergeCommits: false,
-        },
+        gitOptions: { includeMergeCommits: false },
       };
 
-      // 调用后端API启动分析
       const response = await window.electronAPI.startAnalysis(analysisRequest);
-
       message.success("分析已启动");
-
-      // 跳转到分析页面，传递分析ID
       navigate(`/analysis?id=${response.analysisId}`);
     } catch (error) {
       message.error("启动分析失败：" + error.message);
@@ -197,31 +266,94 @@ function HomePage() {
     }
   };
 
-  /**
-   * 步骤配置
-   */
+  // 历史报告表格列
+  const historyColumns = [
+    {
+      title: "项目名称",
+      dataIndex: "projectName",
+      key: "projectName",
+      width: 150,
+      ellipsis: true,
+      render: (text) => <Tooltip title={text}>{text}</Tooltip>,
+    },
+    {
+      title: "生成时间",
+      dataIndex: "generatedTime",
+      key: "generatedTime",
+      width: 160,
+      render: (time) => (time ? new Date(time).toLocaleString() : "-"),
+    },
+    {
+      title: "覆盖率",
+      dataIndex: "overallCoverage",
+      key: "overallCoverage",
+      width: 120,
+      render: (val) => (
+        <Progress
+          percent={val}
+          size="small"
+          status={val >= 80 ? "success" : val < 50 ? "exception" : "active"}
+          format={(percent) => `${percent.toFixed(0)}%`}
+        />
+      ),
+    },
+    {
+      title: "方法覆盖",
+      key: "methodCoverage",
+      width: 120,
+      render: (_, record) => (
+        <span>
+          <Tag color="green">{record.coveredMethods}</Tag>
+          <Tag>/</Tag>
+          <Tag color="blue">{record.totalMethods}</Tag>
+        </span>
+      ),
+    },
+    {
+      title: "操作",
+      key: "actions",
+      width: 120,
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="查看报告">
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewReport(record)}
+              disabled={!record.savedPath}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="确定删除此报告？"
+            onConfirm={() => handleDeleteReport(record.reportId)}
+            okText="删除"
+            cancelText="取消"
+          >
+            <Tooltip title="删除报告">
+              <Button
+                type="link"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  // 步骤配置
   const steps = [
-    {
-      title: "选择项目",
-      icon: <FolderOpenOutlined />,
-    },
-    {
-      title: "扫描项目",
-      icon: <SearchOutlined />,
-    },
-    {
-      title: "配置目录",
-      icon: <SettingOutlined />,
-    },
-    {
-      title: "开始分析",
-      icon: <PlayCircleOutlined />,
-    },
+    { title: "选择项目", icon: <FolderOpenOutlined /> },
+    { title: "扫描项目", icon: <SearchOutlined /> },
+    { title: "配置目录", icon: <SettingOutlined /> },
+    { title: "开始分析", icon: <PlayCircleOutlined /> },
   ];
 
   return (
     <div className="home-page">
-      {/* 页面标题 */}
       <div className="page-header">
         <h1>Java单元测试覆盖检测工具</h1>
         <p>分析Java项目的单元测试覆盖率，生成详细报告</p>
@@ -232,20 +364,101 @@ function HomePage() {
         <Steps current={currentStep} items={steps} />
       </Card>
 
-      {/* 主要内容区域 */}
       <div className="main-content">
         {/* 步骤0：项目选择 */}
         {currentStep === 0 && (
-          <Card className="action-card">
-            <div className="action-content">
-              <FolderOpenOutlined className="action-icon" />
-              <h2>选择Java项目</h2>
-              <p>选择包含Java源码和测试代码的项目目录</p>
-              <Button type="primary" size="large" onClick={handleSelectProject}>
-                选择项目目录
-              </Button>
-            </div>
-          </Card>
+          <>
+            {/* 项目选择卡片 */}
+            <Card className="action-card" style={{ marginBottom: 16 }}>
+              <div className="action-content">
+                <FolderOpenOutlined className="action-icon" />
+                <h2>选择Java项目</h2>
+                <p>选择包含Java源码和测试代码的项目目录</p>
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={handleSelectProject}
+                >
+                  选择项目目录
+                </Button>
+              </div>
+            </Card>
+
+            {/* 报告配置和历史报告区域 */}
+            <Row gutter={16}>
+              {/* 报告目录配置 */}
+              <Col span={8}>
+                <Card
+                  title={
+                    <span>
+                      <SettingOutlined /> 报告目录配置
+                    </span>
+                  }
+                  size="small"
+                >
+                  <Input.Group compact style={{ marginBottom: 12 }}>
+                    <Input
+                      style={{ width: "calc(100% - 140px)" }}
+                      value={reportSavePath}
+                      onChange={(e) => setReportSavePath(e.target.value)}
+                      placeholder="选择报告保存目录"
+                      loading={pathLoading}
+                    />
+                    <Button onClick={handleSelectReportPath}>
+                      <FolderOpenOutlined /> 选择
+                    </Button>
+                  </Input.Group>
+                  <Button
+                    type="primary"
+                    block
+                    icon={<SaveOutlined />}
+                    loading={pathSaving}
+                    onClick={handleSaveReportConfig}
+                  >
+                    保存配置
+                  </Button>
+                </Card>
+              </Col>
+
+              {/* 历史报告列表 */}
+              <Col span={16}>
+                <Card
+                  title={
+                    <span>
+                      <HistoryOutlined /> 历史报告
+                      <Tag color="blue" style={{ marginLeft: 8 }}>
+                        {reportHistory.length}
+                      </Tag>
+                    </span>
+                  }
+                  extra={
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      onClick={loadReportHistory}
+                      loading={historyLoading}
+                    >
+                      刷新
+                    </Button>
+                  }
+                  size="small"
+                >
+                  <Table
+                    dataSource={reportHistory}
+                    columns={historyColumns}
+                    rowKey="reportId"
+                    size="small"
+                    pagination={
+                      reportHistory.length > 5 ? { pageSize: 5 } : false
+                    }
+                    loading={historyLoading}
+                    locale={{ emptyText: "暂无历史报告" }}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          </>
         )}
 
         {/* 步骤1：扫描中 */}
@@ -294,9 +507,7 @@ function HomePage() {
               )}
             </Card>
 
-            {/* 左右两栏目录选择 */}
             <Row gutter={16} className="directory-row">
-              {/* 左侧：源码目录 */}
               <Col span={12}>
                 <Card
                   title="源码目录 (src/main/java)"
@@ -326,7 +537,6 @@ function HomePage() {
                 </Card>
               </Col>
 
-              {/* 右侧：测试目录 */}
               <Col span={12}>
                 <Card
                   title="测试目录 (src/test/java)"
