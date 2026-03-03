@@ -231,13 +231,426 @@ sudo dpkg -i 'build/electron-app/java-coverage-electron_1.0.0_amd64.deb'
 - **JGit** - Git仓库操作
 - **Gson** - JSON序列化
 
+## 📋 使用规则与最佳实践
+
+为了确保工具能够准确识别和分析测试覆盖率，请遵循以下规则和最佳实践。
+
+### 📁 目录结构要求
+
+**标准Maven/Gradle项目结构：**
+
+```
+your-project/
+├── src/
+│   ├── main/
+│   │   └── java/           # 业务代码
+│   │       └── com/example/
+│   │           ├── service/
+│   │           │   └── UserService.java
+│   │           ├── controller/
+│   │           │   └── UserController.java
+│   │           └── repository/
+│   │               └── UserRepository.java
+│   └── test/
+│       └── java/           # 测试代码
+│           └── com/example/
+│               ├── service/
+│               │   └── UserServiceTest.java
+│               ├── controller/
+│               │   └── UserControllerTest.java
+│               └── repository/
+│                   └── UserRepositoryTest.java
+└── pom.xml 或 build.gradle
+```
+
+**要求：**
+- 业务代码应放在 `src/main/java` 目录
+- 测试代码应放在 `src/test/java` 目录
+- 测试代码应保持与业务代码相同的包结构
+
+### 🏷️ 测试类命名规范
+
+**规则：测试类命名必须遵循以下模式**
+
+```
+业务类名 + Test
+```
+
+**示例：**
+
+| 业务类 | 测试类 | ✅/❌ |
+|--------|--------|-------|
+| `UserService` | `UserServiceTest` | ✅ 正确 |
+| `OrderController` | `OrderControllerTest` | ✅ 正确 |
+| `PaymentRepository` | `PaymentRepositoryTest` | ✅ 正确 |
+| `UserService` | `UserServiceTests` | ❌ 错误（多了s） |
+| `UserService` | `TestUserService` | ❌ 错误（前缀） |
+| `UserService` | `UserServiceIT` | ❌ 错误（集成测试） |
+
+**注意：**
+- 工具会自动根据业务类名查找对应的测试类
+- 命名不匹配将导致覆盖率统计为 0%
+
+### 🧪 测试方法命名规范
+
+**规则：测试方法名应包含被测试的业务方法名**
+
+工具通过**方法名匹配**来识别测试覆盖率。
+
+#### 推荐的命名模式：
+
+**1. 基础模式：test + 业务方法名**
+
+```java
+// 业务方法
+public User getUserById(Long id) { ... }
+public void saveUser(User user) { ... }
+public boolean deleteUser(Long id) { ... }
+
+// ✅ 正确的测试方法命名
+@Test
+public void testGetUserById() { ... }
+
+@Test
+public void testSaveUser() { ... }
+
+@Test
+public void testDeleteUser() { ... }
+```
+
+**2. 描述性命名（推荐）：when/should/given 模式**
+
+```java
+// ✅ 推荐：使用描述性命名，包含业务方法名
+@Test
+public void getUserById_whenIdExists_thenReturnUser() { ... }
+
+@Test
+public void getUserById_whenIdNotFound_thenThrowException() { ... }
+
+@Test
+public void saveUser_whenUserIsValid_thenSaveSuccessfully() { ... }
+
+@Test
+public void deleteUser_whenUserExists_thenReturnTrue() { ... }
+```
+
+**3. BDD风格命名**
+
+```java
+// ✅ 推荐：BDD风格
+@Test
+public void shouldReturnUserWhenIdExists() { ... }
+
+@Test
+public void shouldThrowExceptionWhenUserNotFound() { ... }
+
+@Test
+public void givenValidUser_whenSave_thenReturnSuccess() { ... }
+```
+
+#### ❌ 不推荐的命名方式：
+
+```java
+// ❌ 错误：方法名不包含业务方法名
+@Test
+public void test1() { ... }
+
+@Test
+public void testSomething() { ... }
+
+@Test
+public void verifyBehavior() { ... }
+
+// ❌ 错误：拼写错误或不一致
+// 业务方法：getUserById
+@Test
+public void testGetUser() { ... }  // 缺少 "ById"
+```
+
+### 🎯 覆盖率识别规则
+
+工具通过以下规则判断业务方法是否被测试覆盖：
+
+#### 规则1：方法名包含匹配（主要规则）
+
+```java
+// 业务方法
+public User getUserById(Long id) { ... }
+
+// ✅ 以下测试方法会被识别为覆盖（方法名包含 "getUserById"）
+@Test
+public void testGetUserById() { }
+@Test
+public void getUserById_whenIdExists_thenReturnUser() { }
+@Test
+public void shouldReturnUserForGetUserById() { }
+
+// ❌ 以下测试方法不会被识别（方法名不包含完整方法名）
+@Test
+public void testGetUser() { }  // 缺少 "ById"
+@Test
+public void testRetrieveUser() { }  // 使用了不同的词
+```
+
+**匹配规则说明：**
+- 匹配是**不区分大小写**的
+- 测试方法名必须**包含完整的业务方法名**
+- 例如：业务方法 `getUserById`，测试方法必须包含字符串 "getuserbyid"（忽略大小写）
+
+#### 规则2：显式注解标记（可选）
+
+如果测试方法名无法包含业务方法名，可以使用自定义注解：
+
+```java
+// 定义注解（需要在项目中添加）
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface TestedBusinessMethod {
+    String value();
+}
+
+// 使用注解标记
+@Test
+@TestedBusinessMethod("getUserById")
+public void whenUserExists_thenReturnUserData() { ... }
+```
+
+**注意：** 目前工具主要依赖规则1（方法名匹配），规则2需要额外配置。
+
+### 📊 测试粒度评分规则
+
+工具会对每个被覆盖的方法进行测试质量评分（满分100分）：
+
+#### 评分维度：
+
+| 维度 | 分值 | 评分标准 |
+|------|------|----------|
+| **命名规范** | 20分 | 测试方法名包含业务方法名（20分）或通过注解标记（15分） |
+| **断言数量** | 30分 | ≥3个断言（30分）<br/>≥2个断言（20分）<br/>≥1个断言（10分） |
+| **边界值测试** | 25分 | 测试边界条件（如null、空字符串、最大值、最小值） |
+| **异常测试** | 15分 | 测试异常情况（如参数校验、业务异常） |
+| **Mock使用** | 10分 | 方法复杂度>3且使用Mock（10分）<br/>方法复杂度≤3且使用Mock（5分） |
+
+#### 评级标准：
+
+- **优秀（Excellent）**：≥80分 - 测试充分，质量高
+- **良好（Good）**：≥60分 - 测试较为完善
+- **可接受（Acceptable）**：≥40分 - 基本覆盖
+- **较差（Poor）**：<40分 - 需要改进
+
+### ✨ 最佳实践
+
+#### 1. 一个业务方法对应多个测试方法
+
+```java
+// ✅ 推荐：针对不同场景编写多个测试方法
+public class UserServiceTest {
+    
+    @Test
+    public void getUserById_whenIdExists_thenReturnUser() {
+        // 正常场景
+    }
+    
+    @Test
+    public void getUserById_whenIdNotFound_thenThrowException() {
+        // 异常场景
+    }
+    
+    @Test
+    public void getUserById_whenIdIsNull_thenThrowException() {
+        // 边界值测试
+    }
+}
+```
+
+#### 2. 充分的断言
+
+```java
+// ❌ 不推荐：断言不足
+@Test
+public void testGetUserById() {
+    User user = userService.getUserById(1L);
+    assertNotNull(user);
+}
+
+// ✅ 推荐：充分验证
+@Test
+public void testGetUserById() {
+    User user = userService.getUserById(1L);
+    
+    // 验证返回值
+    assertNotNull(user);
+    assertEquals(1L, user.getId());
+    assertEquals("john@example.com", user.getEmail());
+    
+    // 验证方法调用
+    verify(userRepository, times(1)).findById(1L);
+}
+```
+
+#### 3. 测试边界值和异常
+
+```java
+// ✅ 推荐：测试各种边界情况
+@Test
+public void calculateDiscount_whenAmountIsZero_thenReturnZero() {
+    BigDecimal discount = discountService.calculateDiscount(BigDecimal.ZERO);
+    assertEquals(BigDecimal.ZERO, discount);
+}
+
+@Test
+public void calculateDiscount_whenAmountIsNegative_thenThrowException() {
+    assertThrows(IllegalArgumentException.class, () -> {
+        discountService.calculateDiscount(BigDecimal.valueOf(-100));
+    });
+}
+
+@Test
+public void calculateDiscount_whenAmountIsMaxValue_thenHandleCorrectly() {
+    BigDecimal discount = discountService.calculateDiscount(BigDecimal.valueOf(Long.MAX_VALUE));
+    assertNotNull(discount);
+}
+```
+
+#### 4. 合理使用Mock
+
+```java
+// ✅ 推荐：对于复杂依赖使用Mock
+@Test
+public void saveUser_whenUserIsValid_thenSaveSuccessfully() {
+    // Arrange
+    User user = new User("john@example.com", "John");
+    when(userRepository.save(any(User.class))).thenReturn(user);
+    
+    // Act
+    User savedUser = userService.saveUser(user);
+    
+    // Assert
+    assertNotNull(savedUser);
+    verify(userRepository, times(1)).save(user);
+}
+```
+
+### 🚫 常见错误
+
+#### 1. 测试类命名错误
+
+```java
+// ❌ 错误：测试类名不匹配
+public class UserServiceTests { }  // 多了 s
+public class UserServiceIntegrationTest { }  // 后缀错误
+
+// ✅ 正确：测试类名匹配业务类
+public class UserServiceTest { }
+```
+
+#### 2. 测试方法名不包含业务方法名
+
+```java
+// ❌ 错误：方法名过于通用
+@Test
+public void testSuccess() { }
+@Test
+public void testFailure() { }
+
+// ✅ 正确：方法名包含业务方法名
+@Test
+public void getUserById_success() { }
+@Test
+public void getUserById_notFound() { }
+```
+
+#### 3. 测试代码与业务代码包结构不一致
+
+```java
+// 业务代码位置：src/main/java/com/example/service/UserService.java
+// ❌ 错误：测试代码位置
+// src/test/java/com/example/UserServiceTest.java（缺少 service 包）
+
+// ✅ 正确：测试代码位置
+// src/test/java/com/example/service/UserServiceTest.java
+```
+
+### 📝 完整示例
+
+```java
+// 业务类：src/main/java/com/example/service/UserService.java
+package com.example.service;
+
+public class UserService {
+    
+    public User getUserById(Long id) {
+        // 业务逻辑
+    }
+    
+    public User saveUser(User user) {
+        // 业务逻辑
+    }
+    
+    public boolean deleteUser(Long id) {
+        // 业务逻辑
+    }
+}
+```
+
+```java
+// 测试类：src/test/java/com/example/service/UserServiceTest.java
+package com.example.service;
+
+import org.junit.Test;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+public class UserServiceTest {
+    
+    // ✅ 优秀示例：多个场景 + 充分断言 + 边界值 + 异常
+    @Test
+    public void getUserById_whenIdExists_thenReturnUser() {
+        // Arrange
+        Long userId = 1L;
+        User expectedUser = new User(userId, "john@example.com");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(expectedUser));
+        
+        // Act
+        User actualUser = userService.getUserById(userId);
+        
+        // Assert - 充分的断言
+        assertNotNull(actualUser);
+        assertEquals(userId, actualUser.getId());
+        assertEquals("john@example.com", actualUser.getEmail());
+        verify(userRepository, times(1)).findById(userId);
+    }
+    
+    @Test
+    public void getUserById_whenIdNotFound_thenThrowException() {
+        // Arrange
+        Long userId = 999L;
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        
+        // Act & Assert - 异常测试
+        assertThrows(UserNotFoundException.class, () -> {
+            userService.getUserById(userId);
+        });
+    }
+    
+    @Test
+    public void getUserById_whenIdIsNull_thenThrowException() {
+        // Act & Assert - 边界值测试
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.getUserById(null);
+        });
+    }
+}
+```
+
 ## 📊 覆盖率计算规则
 
 ### 方法级覆盖判定
 
 一个业务方法被认为"已覆盖"，需要满足以下条件之一：
-1. 存在测试方法名包含业务方法名
-2. 测试方法的`testedBusinessMethod`属性匹配
+1. 存在测试方法名包含业务方法名（不区分大小写）
+2. 测试方法的`testedBusinessMethod`属性匹配（需要额外配置）
 
 ### 测试粒度评估
 

@@ -1545,16 +1545,6 @@ function ReportPage() {
               />
             </Card>
           </Col>
-
-          <Col span={24}>
-            <Card>
-              <ReactECharts
-                option={developerOption}
-                style={{ height: 280 }}
-                opts={{ renderer: "svg" }}
-              />
-            </Card>
-          </Col>
         </Row>
 
         {/* 详细数据表格 */}

@@ -221,13 +221,31 @@ public class AnalysisService {
             // 获取提交历史
             Date since = null;
             Date until = null;
+            Integer commitCount = null;
+            
             if (request.getGitOptions() != null) {
-                since = request.getGitOptions().getSince();
-                until = request.getGitOptions().getUntil();
+                String scanType = request.getGitOptions().getCommitScanType();
+                
+                if ("time".equals(scanType)) {
+                    // 按时间范围扫描
+                    Integer timeRange = request.getGitOptions().getCommitTimeRange();
+                    if (timeRange != null && timeRange < 9999) {
+                        since = new Date(System.currentTimeMillis() - (long) timeRange * 24 * 60 * 60 * 1000);
+                    }
+                    until = request.getGitOptions().getUntil();
+                } else {
+                    // 按条数扫描（默认）
+                    commitCount = request.getGitOptions().getCommitCount();
+                    if (commitCount == null) {
+                        commitCount = 100; // 默认100条
+                    }
+                    since = request.getGitOptions().getSince();
+                    until = request.getGitOptions().getUntil();
+                }
             }
             
             List<CommitInfo> commits = gitAnalyzer.getCommitHistory(
-                request.getProjectPath(), since, until);
+                request.getProjectPath(), since, until, commitCount);
             gitStatistics.setCommits(commits);
             gitStatistics.setTotalCommits(commits.size());
             

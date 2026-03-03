@@ -22,9 +22,10 @@ import {
   Tag,
   Popconfirm,
   Tooltip,
-  Statistic,
   Progress,
   Space,
+  Radio,
+  Select,
 } from "antd";
 import {
   FolderOpenOutlined,
@@ -59,6 +60,11 @@ function HomePage() {
   const [testTreeData, setTestTreeData] = useState([]);
   const [sourceCheckedKeys, setSourceCheckedKeys] = useState([]);
   const [testCheckedKeys, setTestCheckedKeys] = useState([]);
+
+  // 提交扫描配置
+  const [commitScanType, setCommitScanType] = useState("count"); // 'count' 或 'time'
+  const [commitCount, setCommitCount] = useState(100);
+  const [commitTimeRange, setCommitTimeRange] = useState(30); // 天数
 
   // 报告配置相关状态
   const [reportSavePath, setReportSavePath] = useState("");
@@ -253,7 +259,12 @@ function HomePage() {
         projectPath: projectPath,
         sourceDirectories: selectedSourceDirs,
         testDirectories: selectedTestDirs,
-        gitOptions: { includeMergeCommits: false },
+        gitOptions: {
+          includeMergeCommits: false,
+          commitScanType: commitScanType,
+          commitCount: commitScanType === "count" ? commitCount : null,
+          commitTimeRange: commitScanType === "time" ? commitTimeRange : null,
+        },
       };
 
       const response = await window.electronAPI.startAnalysis(analysisRequest);
@@ -566,6 +577,69 @@ function HomePage() {
                 </Card>
               </Col>
             </Row>
+
+            {projectStructure?.isGitRepository && (
+              <Card
+                title="提交扫描配置"
+                className="info-card"
+                style={{ marginTop: 16 }}
+              >
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <div style={{ marginBottom: 8 }}>
+                      <strong>扫描方式：</strong>
+                    </div>
+                    <Radio.Group
+                      value={commitScanType}
+                      onChange={(e) => setCommitScanType(e.target.value)}
+                    >
+                      <Radio.Button value="count">按条数</Radio.Button>
+                      <Radio.Button value="time">按时间</Radio.Button>
+                    </Radio.Group>
+                  </Col>
+                  <Col span={16}>
+                    {commitScanType === "count" ? (
+                      <div>
+                        <div style={{ marginBottom: 8 }}>
+                          <strong>扫描最近提交数：</strong>
+                        </div>
+                        <Select
+                          value={commitCount}
+                          onChange={setCommitCount}
+                          style={{ width: "100%" }}
+                        >
+                          <Select.Option value={50}>最近 50 条</Select.Option>
+                          <Select.Option value={100}>最近 100 条</Select.Option>
+                          <Select.Option value={200}>最近 200 条</Select.Option>
+                          <Select.Option value={500}>最近 500 条</Select.Option>
+                          <Select.Option value={1000}>
+                            最近 1000 条
+                          </Select.Option>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ marginBottom: 8 }}>
+                          <strong>扫描时间范围：</strong>
+                        </div>
+                        <Select
+                          value={commitTimeRange}
+                          onChange={setCommitTimeRange}
+                          style={{ width: "100%" }}
+                        >
+                          <Select.Option value={7}>最近 7 天</Select.Option>
+                          <Select.Option value={30}>最近 30 天</Select.Option>
+                          <Select.Option value={90}>最近 90 天</Select.Option>
+                          <Select.Option value={180}>最近 180 天</Select.Option>
+                          <Select.Option value={365}>最近 1 年</Select.Option>
+                          <Select.Option value={9999}>全部提交</Select.Option>
+                        </Select>
+                      </div>
+                    )}
+                  </Col>
+                </Row>
+              </Card>
+            )}
 
             <div className="action-buttons">
               <Button size="large" onClick={() => setCurrentStep(0)}>

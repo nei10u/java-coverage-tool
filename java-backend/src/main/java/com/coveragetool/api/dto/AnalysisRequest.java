@@ -69,6 +69,9 @@ public class AnalysisRequest {
         private Date since;
         private Date until;
         private boolean includeMergeCommits;
+        private String commitScanType; // "count" 或 "time"
+        private Integer commitCount; // 扫描的提交条数
+        private Integer commitTimeRange; // 扫描的时间范围（天数）
         
         public Date getSince() {
             return since;
@@ -92,6 +95,30 @@ public class AnalysisRequest {
         
         public void setIncludeMergeCommits(boolean includeMergeCommits) {
             this.includeMergeCommits = includeMergeCommits;
+        }
+        
+        public String getCommitScanType() {
+            return commitScanType;
+        }
+        
+        public void setCommitScanType(String commitScanType) {
+            this.commitScanType = commitScanType;
+        }
+        
+        public Integer getCommitCount() {
+            return commitCount;
+        }
+        
+        public void setCommitCount(Integer commitCount) {
+            this.commitCount = commitCount;
+        }
+        
+        public Integer getCommitTimeRange() {
+            return commitTimeRange;
+        }
+        
+        public void setCommitTimeRange(Integer commitTimeRange) {
+            this.commitTimeRange = commitTimeRange;
         }
     }
 }

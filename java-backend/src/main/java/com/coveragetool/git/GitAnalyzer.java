@@ -89,9 +89,10 @@ public class GitAnalyzer {
      * @param projectPath 项目根路径
      * @param since 开始日期（可选，为null表示不限制）
      * @param until 结束日期（可选，为null表示不限制）
+     * @param maxCount 最大提交数量（可选，为null表示不限制，扫描全部）
      * @return 提交信息列表
      */
-    public List<CommitInfo> getCommitHistory(String projectPath, Date since, Date until) {
+    public List<CommitInfo> getCommitHistory(String projectPath, Date since, Date until, Integer maxCount) {
         List<CommitInfo> commits = new ArrayList<>();
         
         try {
@@ -103,10 +104,11 @@ public class GitAnalyzer {
             // 创建日志命令
             LogCommand logCommand = git.log();
             
-            // 限制提交数量（避免处理过多历史）
-            logCommand.setMaxCount(100);
-            
-            // 注意：时间范围过滤在结果处理时进行
+            // 限制提交数量（如果指定了maxCount）
+            if (maxCount != null && maxCount > 0) {
+                logCommand.setMaxCount(maxCount);
+            }
+            // 如果maxCount为null，则不设置限制，扫描全部提交
             
             // 执行命令，获取提交迭代器
             Iterable<RevCommit> commitIterable = logCommand.call();
@@ -114,6 +116,15 @@ public class GitAnalyzer {
             // 遍历所有提交
             for (RevCommit revCommit : commitIterable) {
                 CommitInfo commitInfo = parseCommit(revCommit);
+                
+                // 如果指定了时间范围，进行过滤
+                if (since != null && commitInfo.getCommitDate().before(since)) {
+                    continue; // 跳过早于since的提交
+                }
+                if (until != null && commitInfo.getCommitDate().after(until)) {
+                    continue; // 跳过晚于until的提交
+                }
+                
                 commits.add(commitInfo);
             }
             
